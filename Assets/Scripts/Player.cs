@@ -5,9 +5,10 @@ using UnityEditor.UI;
 
 public class Player : MonoBehaviour
 {
-	[SerializeField]
 	private float _speed = 3.5f;
-	
+	private float _speedMultiplier = 4.0f;
+
+
 	[SerializeField]
 	private GameObject _laserPrefab;
 	
@@ -21,10 +22,13 @@ public class Player : MonoBehaviour
 	private Spawn_Manager _spawnManager;
 	
 	//powerups
-	[SerializeField]
 	private bool _tripleShotEnabled = false;
 	[SerializeField]
 	private GameObject _tripleShotPrefab;
+	
+	private bool _speedBoostEnabled = false;
+	
+	
 	
     void Start()
     {
@@ -55,8 +59,17 @@ public class Player : MonoBehaviour
 		float verticlInput = Input.GetAxis("Vertical");
 		
 		Vector3 direction = new Vector3(horizontalInput, verticlInput, 0);
-		transform.Translate(direction * _speed * Time.deltaTime);
 		
+		if(_speedBoostEnabled == false)
+		{
+			transform.Translate(direction * _speed * Time.deltaTime);			
+		}
+		else if(_speedBoostEnabled == true)
+		{
+			transform.Translate(direction * (_speed * _speedMultiplier) * Time.deltaTime);			
+
+		}
+
 		transform.position = new Vector3(transform.position.x, Mathf.Clamp(transform.position.y, -3.5f, 0), 0);
 		
 		if(transform.position.x >=11)
@@ -93,6 +106,18 @@ public class Player : MonoBehaviour
 	{
 		yield return new WaitForSeconds(5);
 		_tripleShotEnabled = false;
+	}
+	
+	public void SpeedBoostActive()
+	{
+		_speedBoostEnabled = true;
+		StartCoroutine(SpeedBoostPowerDownRoutine());
+	}
+	
+	IEnumerator SpeedBoostPowerDownRoutine()
+	{
+		yield return new WaitForSeconds(5);
+		_speedBoostEnabled = false;
 	}
 	
 	
