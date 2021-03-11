@@ -22,12 +22,15 @@ public class Player : MonoBehaviour
 	private Spawn_Manager _spawnManager;
 	
 	//powerups
-	private bool _tripleShotEnabled = false;
+	private bool _tripleShotEnabled = false;	
+	private bool _speedBoostEnabled = false;
+	private bool _shieldActive = false;
+	
+	[SerializeField]
+	private GameObject _shieldPrefab;
+	
 	[SerializeField]
 	private GameObject _tripleShotPrefab;
-	
-	private bool _speedBoostEnabled = false;
-	
 	
 	
     void Start()
@@ -121,9 +124,27 @@ public class Player : MonoBehaviour
 	}
 	
 	
+	public void ShieldActive()
+	{
+		_shieldActive = true;
+		_shieldPrefab.SetActive(true);
+	}
+	
+	
 	public void Damage()
 	{
-		_lives = _lives - 1;
+		
+
+		if(_shieldActive == true)
+		{
+			_shieldActive = false;
+			_shieldPrefab.SetActive(false);
+			return;
+		}
+		else if (_shieldActive == false)
+		{
+			_lives = _lives - 1;			
+		}
 		
 		if(_lives < 1)
 		{

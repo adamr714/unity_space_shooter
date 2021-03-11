@@ -46,7 +46,7 @@ public class PowerUp : MonoBehaviour
 					player.SpeedBoostActive();
 					break;
 				case 2:
-					Debug.Log("Shields ON...Ramming Speed!!!");					
+					player.ShieldActive();
 					break;
 				default:
 					Debug.Log("Blah blah blah!!!");
