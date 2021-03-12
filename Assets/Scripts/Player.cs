@@ -162,7 +162,8 @@ public class Player : MonoBehaviour
 		}
 		else if (_shieldActive == false)
 		{
-			_lives = _lives - 1;			
+			_lives = _lives - 1;
+			_uiManager.UpdateLives(_lives);
 		}
 		
 		if(_lives < 1)
