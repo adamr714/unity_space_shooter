@@ -32,16 +32,27 @@ public class Player : MonoBehaviour
 	[SerializeField]
 	private GameObject _tripleShotPrefab;
 	
+	[SerializeField]
+	private int _score;
+	private UIManager _uiManager;
+	
 	
     void Start()
     {
 	    transform.position = new Vector3(0,-3.0f, 0);
+	    _spawnManager = GameObject.Find("Spawn_Manager").GetComponent<Spawn_Manager>();
+	    _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
 	    
 	    if(_spawnManager != null)
 	    {
 	    	Debug.LogError("SpawnManger is Null");
 	    }
-	    _spawnManager = GameObject.Find("Spawn_Manager").GetComponent<Spawn_Manager>();
+	    
+	    if(_uiManager == null)
+	    {
+	    	Debug.LogError("UI Manager is Empty");
+	    }
+
 	    
     }
 
@@ -131,6 +142,14 @@ public class Player : MonoBehaviour
 	}
 	
 	
+	public void AddScore(int points)
+	{
+		_score += points;
+		_uiManager.UpdateScore(_score);
+	}
+
+	
+
 	public void Damage()
 	{
 		
