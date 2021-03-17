@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
@@ -17,11 +18,18 @@ public class UIManager : MonoBehaviour
 	[SerializeField]
 	private Text _gameOver;
 	
+	[SerializeField]
+	private Text _restartGame;
+	
+	private GameManager _gameManager;
+	
     // Start is called before the first frame update
     void Start()
 	{
 		_scoreText.text = "Score: " + 0;
 		_gameOver.gameObject.SetActive(false);
+		_restartGame.gameObject.SetActive(false);
+		_gameManager = GameObject.Find("Game_Manager").GetComponent<GameManager>();
 	    
     }
 
@@ -37,8 +45,16 @@ public class UIManager : MonoBehaviour
 		
 		if(currentLives == 0)
 		{
-			StartCoroutine(BlinkingGameOver());
+			GameOverSequence();
 		}
+	}
+	
+	
+	void GameOverSequence()
+	{
+		_gameOver.gameObject.SetActive(true);		
+		_restartGame.gameObject.SetActive(true);
+		StartCoroutine(BlinkingGameOver());
 	}
 	
 	IEnumerator BlinkingGameOver()
@@ -48,7 +64,8 @@ public class UIManager : MonoBehaviour
 			yield return new WaitForSeconds(.5f);
 			_gameOver.gameObject.SetActive(true);			
 			yield return new WaitForSeconds(.5f);
-			_gameOver.gameObject.SetActive(false);			
+			_gameOver.gameObject.SetActive(false);
+			_gameManager.GameOver();
 
 		}
 
