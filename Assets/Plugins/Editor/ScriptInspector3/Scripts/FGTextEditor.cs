@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -27,7 +27,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using Themes;
-#if UNITY_2019_2_OR_NEWER
+#if UNITY_2019_1_OR_NEWER
 using UnityEngine.UIElements;
 #endif
 
@@ -2033,6 +2033,7 @@ public class FGTextEditor
 			Autocomplete(tryAutoSuggestion);
 			tryAutoSuggestion = false;
 			tryAutocomplete = false;
+			Repaint();
 		}
 		else
 		{
@@ -4032,7 +4033,8 @@ public class FGTextEditor
 
 						if (charsToDraw > 0)
 						{
-							var tokenText = token.text.Substring(tokenTextStart, charsToDraw);
+							var tokenText = tokenTextStart == 0 && tokenTextLength == charsToDraw ?
+							  token.text : token.text.Substring(tokenTextStart, charsToDraw);
 							
 							charIndex += charsToDraw;
 							var endAtColumn = textBuffer.CharIndexToColumn(charIndex, i, rowStart);
@@ -4447,6 +4449,7 @@ public class FGTextEditor
 					case SymbolKind.Destructor:
 						tokenStyle = textBuffer.styles.methodStyle;
 						break;
+					case SymbolKind.CaseVariable:
 					case SymbolKind.ForEachVariable:
 					case SymbolKind.FromClauseVariable:
 					case SymbolKind.Variable:
@@ -6864,6 +6867,8 @@ public class FGTextEditor
 
 		string id = null;
 		string keyword = null;
+		string proposal = null;
+		string builtinType = null;
 		if (token.tokenKind == SyntaxToken.Kind.Keyword || token.tokenKind == SyntaxToken.Kind.ContextualKeyword)
 		{
 			switch (token.text)
@@ -6882,7 +6887,7 @@ public class FGTextEditor
 
 				case "continue": id = "923ahwt1"; break;
 				case "default": id = token.parent.parent.RuleName == "defaultValueExpression" ? "xwth0h0d" : "06tc147t"; break;
-				case "delegate": id = "900fyy8e"; break;
+				case "delegate": builtinType = "reference-types#the-delegate-type"; break;
 
 				case "do": id = "370s1zax"; break;
 				case "if": case "else": id = "5011f09h"; break;
@@ -6918,7 +6923,53 @@ public class FGTextEditor
 				case "protected": id = "bcd5672a"; break;
 				case "public": id = "yzh058ae"; break;
 				case "readonly": id = "acdd6hb7"; break;
-				case "ref": id = "14akc2c7"; break;
+				case "ref":
+					if (token.parent.parent == null)
+					{
+						keyword = "ref";
+						break;
+					}
+					Debug.Log(token.parent.parent.RuleName);
+					switch (token.parent.parent.RuleName)
+					{
+					case "namespaceMemberDeclaration":
+						builtinType = "struct#ref-struct";
+						break;
+					case "conditionalExpression":
+						proposal = "csharp-7.2/conditional-ref";
+						break;
+					case "classMemberDeclaration":
+					case "structMemberDeclaration":
+						{
+							var nextSibling = token.parent.nextSibling as ParseTree.Node;
+							if (nextSibling == null)
+								goto case "methodBody";
+							if (nextSibling.RuleName == "PARTIAL")
+								nextSibling = nextSibling.nextSibling as ParseTree.Node;
+							if (nextSibling == null)
+								goto case "methodBody";
+							if (nextSibling.RuleName == "structDeclaration")
+								goto case "namespaceMemberDeclaration";
+							else
+								goto case "methodBody";
+						}
+					case "statement":
+					case "localVariableDeclarator":
+					case "assignment":
+						keyword = "ref#ref-locals";
+						break;
+					case "returnStatement":
+					case "readonlyAccessorDeclation":
+					case "accessorBody":
+					case "methodBody":
+					case "lambdaExpressionBody":
+						keyword = "ref#reference-return-values";
+						break;
+					default:
+						keyword = "ref#passing-an-argument-by-reference";
+						break;
+					}
+					break;
 				
 				case "return": id = "1h3swy84"; break;
 				case "sealed": id = "88c54tsw"; break;
@@ -6973,7 +7024,8 @@ public class FGTextEditor
 				
 				case "value": keyword = "value"; break;
 				case "var": keyword = "var"; break;
-				case "when": keyword = "when"; break;
+				case "when": keyword = token.parent.parent.parent.RuleName == "specificCatchClause"
+					? "when#when-in-a-catch-statement" : "when#when-in-a-switch-statement"; break;
 				
 				case "where": keyword = token.parent.parent.RuleName == "typeParameterConstraintsClause" ? "where-generic-type-constraint" : "where-clause"; break;
 				case "yield": keyword = "yield"; break;
@@ -6987,6 +7039,14 @@ public class FGTextEditor
 		else if (keyword != null)
 		{
 			return "http://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/" + keyword;
+		}
+		else if (proposal != null)
+		{
+			return "http://docs.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/" + proposal;
+		}
+		else if (builtinType != null)
+		{
+			return "http://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/" + builtinType;
 		}
 		else if (token.parent != null && token.parent.resolvedSymbol != null)
 		{
@@ -7536,8 +7596,8 @@ public class FGTextEditor
 								rc.x += scrollViewRect.x - scrollPosition.x;
 								rc.y += 4f + scrollViewRect.y - scrollPosition.y;
 								var ssTopLeft = GUIUtility.ScreenToGUIPoint(new Vector2(rc.x, rc.y));
-								rc.x += ssTopLeft.x - rc.x;
-								rc.y += ssTopLeft.y - rc.y;
+								rc.x = ssTopLeft.x;
+								rc.y = ssTopLeft.y;
 								tokenMenu.DropDown(rc);
 								
 								caretMoveTime = frameTime;
@@ -8214,7 +8274,8 @@ public class FGTextEditor
 								}
 							}
 							
-							text += "\t";
+							if (SISettings.autoIndentCode)
+								text += "\t";
 						}
 						else if (tokenLeft != null && tokenLeft.tokenKind == SyntaxToken.Kind.StringLiteral)
 						{

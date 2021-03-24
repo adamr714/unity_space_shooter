@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -1096,7 +1096,7 @@ public class FGTextBuffer : ScriptableObject
 			return 0;
 		if (c >= '0' && c <= '9')
 			return 1;
-		if (c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z')
+		if (c == '_' || char.IsLetter(c))
 			return digitsAsLetters ? 1 : 2;
 		return ignorePunctuations ? 0 : 3;
 	}
@@ -1202,10 +1202,12 @@ public class FGTextBuffer : ScriptableObject
 					}
 					if (prevChar == '_' && thisChar != '_')
 						break;
-					if (thisChar >= 'A' && thisChar <= 'Z' && (prevChar < 'A' || prevChar > 'Z'))
+					var isThisUpper = char.IsUpper(thisChar);
+					var isPrevUpper = char.IsUpper(prevChar);
+					if (isThisUpper && !isPrevUpper)
 						break;
 					--column;
-					if (prevChar >= 'A' && prevChar <= 'Z' && (thisChar < 'A' || thisChar > 'Z'))
+					if (isPrevUpper && !isThisUpper)
 						break;
 					thisChar = prevChar;
 				}
@@ -1289,7 +1291,10 @@ public class FGTextBuffer : ScriptableObject
 						}
 						else
 						{
-							if ((thisChar < 'A' || thisChar > 'Z') && thisChar != '_' && nextChar >= 'A' && nextChar <= 'Z')
+							var isThisUpper = char.IsUpper(thisChar);
+							var isNextUpper = char.IsUpper(nextChar);
+							
+							if (!isThisUpper && thisChar != '_' && isNextUpper)
 								break;
 							if (SISettings.wordBreak_RightArrowStopsAtWordEnd ?
 								thisChar != '_' && nextChar == '_' :
@@ -1297,12 +1302,12 @@ public class FGTextBuffer : ScriptableObject
 							{
 								break;
 							}
-							if (thisChar >= 'A' && thisChar <= 'Z' && nextChar >= 'A' && nextChar <= 'Z')
+							if (isThisUpper && isNextUpper)
 							{
 								if (column + 1 < s.Length)
 								{
 									var c = s[column + 1];
-									if (GetCharClass(c, false, ignorePunctuations) == 2 && (c < 'A' || c > 'Z'))
+									if (GetCharClass(c, false, ignorePunctuations) == 2 && !char.IsUpper(c))
 										break;
 								}
 							}

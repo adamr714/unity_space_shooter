@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -32,6 +32,9 @@ public class FGConsole : EditorWindow
 	private static FieldInfo errorStyleField;
 	private static FieldInfo warningStyleField;
 	private static FieldInfo logStyleField;
+	private static FieldInfo errorSmallStyleField;
+	private static FieldInfo warningSmallStyleField;
+	private static FieldInfo logSmallStyleField;
 	private static FieldInfo messageStyleField;
 	
 	public readonly static System.Type consoleWindowType;
@@ -99,8 +102,11 @@ public class FGConsole : EditorWindow
 			if (consoleConstantsType != null)
 			{
 				errorStyleField = consoleConstantsType.GetField("ErrorStyle", staticMemberFlags);
+				errorSmallStyleField = consoleConstantsType.GetField("ErrorSmallStyle", staticMemberFlags);
 				warningStyleField = consoleConstantsType.GetField("WarningStyle", staticMemberFlags);
+				warningSmallStyleField = consoleConstantsType.GetField("WarningSmallStyle", staticMemberFlags);
 				logStyleField = consoleConstantsType.GetField("LogStyle", staticMemberFlags);
+				logSmallStyleField = consoleConstantsType.GetField("LogSmallStyle", staticMemberFlags);
 				messageStyleField = consoleConstantsType.GetField("MessageStyle", staticMemberFlags);
 			}
 		}
@@ -286,7 +292,6 @@ Click the button below to open the Console window...", MessageType.Info);
 				menu.DropDown(rc);
 			}
 
-#if !UNITY_2019_3_OR_NEWER
 			if (font == null && SISettings.monospacedFontConsole)
 			{
 				font = FGTextEditor.LoadEditorResource<Font>("Smooth Fonts/DejaVu Sans Mono.ttf");
@@ -306,7 +311,6 @@ Click the button below to open the Console window...", MessageType.Info);
 
 				SetConsoleFont(SISettings.monospacedFontConsole ? font : null);
 			}
-#endif
 		}
 		finally
 		{
@@ -314,32 +318,27 @@ Click the button below to open the Console window...", MessageType.Info);
 		}
 	}
 	
+	private static void SetFontField(FieldInfo field, Font font)
+	{
+		if (field == null)
+			return;
+		GUIStyle style = field.GetValue(null) as GUIStyle;
+		if (style == null)
+			return;
+
+		style.font = font;
+		style.fontSize = font != null ? 11 : 0;
+	}
+	
 	private static void SetConsoleFont(Font font)
 	{
-		GUIStyle style = errorStyleField.GetValue(null) as GUIStyle;
-		if (style != null)
-		{
-			style.font = font;
-			style.fontSize = font != null ? 11 : 0;
-		}
-		style = warningStyleField.GetValue(null) as GUIStyle;
-		if (style != null)
-		{
-			style.font = font;
-			style.fontSize = font != null ? 11 : 0;
-		}
-		style = logStyleField.GetValue(null) as GUIStyle;
-		if (style != null)
-		{
-			style.font = font;
-			style.fontSize = font != null ? 11 : 0;
-		}
-		style = messageStyleField.GetValue(null) as GUIStyle;
-		if (style != null)
-		{
-			style.font = font;
-			style.fontSize = font != null ? 11 : 0;
-		}
+		SetFontField(errorStyleField, font);
+		SetFontField(errorSmallStyleField, font);
+		SetFontField(warningStyleField, font);
+		SetFontField(warningSmallStyleField, font);
+		SetFontField(logStyleField, font);
+		SetFontField(logSmallStyleField, font);
+		SetFontField(messageStyleField, font);
 	}
 
 	private static void OpenLogEntry(EditorWindow console)

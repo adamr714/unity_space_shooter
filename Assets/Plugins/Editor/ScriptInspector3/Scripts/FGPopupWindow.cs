@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -186,7 +186,7 @@ public class FGPopupWindow : EditorWindow
 		}
 	}
 	
-	protected void SetSize(float width, float height)
+	protected Rect SetSize(float width, float height)
 	{
 		var x = horizontal ? (flipped ? dropDownRect.x - width : dropDownRect.xMax) : dropDownRect.x;
 		var y = horizontal ? dropDownRect.y : (flipped ? dropDownRect.y - height : dropDownRect.yMax);
@@ -220,6 +220,8 @@ public class FGPopupWindow : EditorWindow
 		position = fit;
 		maxSize = minSize = new Vector2(width, height);
 		resizing = false;
+		
+		return fit;
 	}
 }
 

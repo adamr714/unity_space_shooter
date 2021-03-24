@@ -1,6 +1,6 @@
 -------------------------------------
 SCRIPT INSPECTOR 3
-version 3.0.27, December 2020
+version 3.0.28, March 2021
 Copyright © 2012-2020, Flipbook Games
 -------------------------------------
 

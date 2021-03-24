@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -442,6 +442,7 @@ public static class FGFindInFiles
 		
 		if (symbol.kind == SymbolKind.CatchParameter ||
 			symbol.kind == SymbolKind.Destructor ||
+			symbol.kind == SymbolKind.CaseVariable ||
 			symbol.kind == SymbolKind.ForEachVariable ||
 			symbol.kind == SymbolKind.FromClauseVariable ||
 			symbol.kind == SymbolKind.Label ||
@@ -563,7 +564,10 @@ public static class FGFindInFiles
 	
 	public static IList<string> GetOrReadAllLinesForPath(string assetPath)
 	{
-		string[] lines;
+		if (string.IsNullOrEmpty(assetPath))
+			return null;
+		
+		string[] lines = null;
 		try
 		{
 			var textBuffer = FGTextBufferManager.TryGetBuffer(assetPath);
@@ -647,6 +651,9 @@ public static class FGFindInFiles
 	
 	public static bool ContainsWordsSequence(string assetPath, params string[] words)
 	{
+		if (string.IsNullOrEmpty(assetPath))
+			return false;
+		
 		try
 		{
 			var lines = File.ReadAllLines(assetPath);

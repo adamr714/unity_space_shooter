@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -690,7 +690,7 @@ public class CsParser : FGParser
 					var textArgument = line.Substring(startAt);
 					textArgument.TrimEnd(new [] {' ', '\t'});
 					tokens.Add(new SyntaxToken(SyntaxToken.Kind.PreprocessorArguments, textArgument) { formatedLine = formatedLine });
-					startAt = length - textArgument.Length;
+					startAt += textArgument.Length;
 					if (startAt < length)
 						tokens.Add(new SyntaxToken(SyntaxToken.Kind.Whitespace, line.Substring(startAt)) { formatedLine = formatedLine });
 				}

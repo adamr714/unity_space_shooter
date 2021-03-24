@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -327,11 +327,11 @@ public class FGListPopup : FGPopupWindow
 			SymbolKind.Class, SymbolKind.Delegate, SymbolKind.Field, SymbolKind.ConstantField, SymbolKind.LocalConstant,
 			SymbolKind.EnumMember, SymbolKind.Property, SymbolKind.Event, SymbolKind.Indexer,
 			SymbolKind.Method, SymbolKind.Constructor, SymbolKind.Destructor, SymbolKind.Operator,
-			SymbolKind.Accessor, SymbolKind.Parameter, SymbolKind.CatchParameter, SymbolKind.Variable,
+			SymbolKind.Accessor, SymbolKind.Parameter, SymbolKind.CatchParameter, SymbolKind.Variable, SymbolKind.CaseVariable,
 			SymbolKind.ForEachVariable, SymbolKind.FromClauseVariable, SymbolKind.TypeParameter,
 			SymbolKind.Label };
 		var oneForAll = new HashSet<SymbolKind> { SymbolKind.Namespace, SymbolKind.EnumMember, SymbolKind.Parameter,
-			SymbolKind.CatchParameter, SymbolKind.Variable, SymbolKind.ForEachVariable, SymbolKind.FromClauseVariable,
+			SymbolKind.CatchParameter, SymbolKind.Variable, SymbolKind.CaseVariable, SymbolKind.ForEachVariable, SymbolKind.FromClauseVariable,
 			SymbolKind.TypeParameter, SymbolKind.Label, SymbolKind.LocalConstant, SymbolKind.Constructor, SymbolKind.Destructor };
 		symbolIcons = new Texture2D[System.Enum.GetNames(typeof(SymbolKind)).Length, 3];
 		for (var i = 0; i < kinds.Length; i++)
@@ -341,6 +341,8 @@ public class FGListPopup : FGPopupWindow
 				kind = "Constant";
 			else if (kind == "EnumMember")
 				kind = "EnumItem";
+			else if (kind == "CaseVariable")
+				kind = "Variable";
 			var index = (int) kinds[i];
 			symbolIcons[index, 0] = FGTextEditor.LoadEditorResource<Texture2D>("Symbol Icons/VSObject_" + kind + ".png");
 			if (oneForAll.Contains(kinds[i]))
@@ -494,7 +496,7 @@ public class FGListPopup : FGPopupWindow
 			var kind = symbol.kind;
 			if (kind == SymbolKind.Variable || kind == SymbolKind.Parameter || kind == SymbolKind.LocalConstant ||
 				kind == SymbolKind.Label ||
-				kind == SymbolKind.CatchParameter || kind == SymbolKind.FromClauseVariable || kind == SymbolKind.ForEachVariable)
+				kind == SymbolKind.CatchParameter || kind == SymbolKind.FromClauseVariable || kind == SymbolKind.ForEachVariable || kind == SymbolKind.CaseVariable)
 			{
 				var nameOf = NameOf(symbol);
 				var recentIndex = recentCompletions.IndexOf(nameOf);
@@ -702,11 +704,9 @@ public class FGListPopup : FGPopupWindow
 			if (!isSizeSet || rc != pos)
 			{
 				currentWidth = rc.width;
-				SetSize(rc.width, rc.height);
-				isSizeSet = true;
-				pos.width = currentWidth;
-				pos.height = rc.height;
+				pos = SetSize(rc.width, rc.height);
 				position = pos;
+				isSizeSet = true;
 			}
 
 			EditorGUIUtility.SetIconSize(new Vector2(16f, 16f));
@@ -714,7 +714,7 @@ public class FGListPopup : FGPopupWindow
 			System.Text.StringBuilder sb = null;
 			for (var i = Mathf.Min(filteredData.Count, scrollPosition + maxListItems); --i >= scrollPosition; )
 			{
-				var rcItem = new Rect(2f, 1f + listItemHeight * (i - scrollPosition), position.width - 3f, listItemHeight);
+				var rcItem = new Rect(2f, 1f + listItemHeight * (i - scrollPosition), pos.width - 3f, listItemHeight);
 				if (filteredData.Count > maxListItems)
 					rcItem.xMax -= 15f;
 

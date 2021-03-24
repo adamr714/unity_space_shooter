@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -36,6 +36,7 @@ public enum SemanticFlags
 	NamespaceDeclaration,
 	UsingNamespace,
 	UsingAlias,
+	UsingStatic,
 	ExternAlias,
 	ClassDeclaration,
 	TypeParameterDeclaration,
@@ -47,6 +48,7 @@ public enum SemanticFlags
 	LocalVariableDeclarator,
 	ForEachVariableDeclaration,
 	FromClauseVariableDeclaration,
+	CaseVariableDeclaration,
 	LabeledStatement,
 	CatchExceptionParameterDeclaration,
 	FixedParameterDeclaration,
@@ -104,23 +106,24 @@ public enum SemanticFlags
 	AnonymousMethodBodyScope      = 17 << 8,
 	CodeBlockScope                = 18 << 8,
 	SwitchBlockScope              = 19 << 8,
-	ForStatementScope             = 20 << 8,
-	EmbeddedStatementScope        = 21 << 8,
-	UsingStatementScope           = 22 << 8,
-	LocalVariableInitializerScope = 23 << 8,
-	SpecificCatchScope            = 24 << 8,
-	ArgumentListScope             = 25 << 8,
-	AttributeArgumentsScope       = 26 << 8,
-	MemberInitializerScope        = 27 << 8,
+	SwitchSectionScope            = 20 << 8,
+	ForStatementScope             = 21 << 8,
+	EmbeddedStatementScope        = 22 << 8,
+	UsingStatementScope           = 23 << 8,
+	LocalVariableInitializerScope = 24 << 8,
+	SpecificCatchScope            = 25 << 8,
+	ArgumentListScope             = 26 << 8,
+	AttributeArgumentsScope       = 27 << 8,
+	MemberInitializerScope        = 28 << 8,
 
-	TypeDeclarationScope          = 28 << 8,
-	MethodDeclarationScope        = 29 << 8,
-	AttributesScope               = 30 << 8,
-	AccessorBodyScope             = 31 << 8,
-	AccessorsListScope            = 32 << 8,
-	QueryExpressionScope          = 33 << 8,
-	QueryBodyScope                = 34 << 8,
-	MemberDeclarationScope        = 35 << 8,
+	TypeDeclarationScope          = 29 << 8,
+	MethodDeclarationScope        = 30 << 8,
+	AttributesScope               = 31 << 8,
+	AccessorBodyScope             = 32 << 8,
+	AccessorsListScope            = 33 << 8,
+	QueryExpressionScope          = 34 << 8,
+	QueryBodyScope                = 35 << 8,
+	MemberDeclarationScope        = 36 << 8,
 
 	ScopesEnd,
 }
@@ -2778,13 +2781,32 @@ public abstract class FGGrammar
 			scanner.ErrorGrammarNode = scanner.CurrentGrammarNode;
 
 			while (scanner.CurrentGrammarNode != null)
+			{
+				var line = scanner.CurrentLine();
+				var tokenIndex = scanner.CurrentTokenIndex();
+				var rule = scanner.CurrentGrammarNode;
+				var node = scanner.CurrentParseTreeNode;
+
 				if (!ParseStep(scanner))
 					break;
+				
+				if (scanner.ErrorMessage == null)
+				{
+					if (scanner.CurrentParseTreeNode == node && scanner.CurrentGrammarNode == rule && scanner.CurrentTokenIndex() == tokenIndex && scanner.CurrentLine() == line)
+					{
+						tryToRecover = false;
+						//Debug.LogError("Cannot continue parsing - stuck at line " + line + ", token index " + tokenIndex);
+						//break;
+					}
+				}
+			}
 
 			//if (scanner.MoveNext())
 			//	Debug.LogWarning(scanner + ": trash at end");
 			return parseTree;
 		}
+
+		public bool tryToRecover = true;
 
 		public bool ParseStep(IScanner scanner)
 		{
@@ -2856,11 +2878,17 @@ public abstract class FGGrammar
 						cpt.InvalidateFrom(cpt.LastValid.childIndex);
 				}
 
-				if (scanner.CurrentGrammarNode != null)
+				if (!tryToRecover)
+                {
+					tryToRecover = true;
+					scanner.CurrentGrammarNode = null;
+				}						
+				else if (scanner.CurrentGrammarNode != null)
 				{
 					int numSkipped;
 					scanner.CurrentGrammarNode = scanner.CurrentGrammarNode.Recover(scanner, out numSkipped);
 				}
+
 				if (scanner.CurrentGrammarNode == null)
 				{
 					if (token.parent != null)

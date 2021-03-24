@@ -1,5 +1,5 @@
 ﻿/* SCRIPT INSPECTOR 3
- * version 3.0.27, December 2020
+ * version 3.0.28, March 2021
  * Copyright © 2012-2020, Flipbook Games
  * 
  * Unity's legendary editor for C#, UnityScript, Boo, Shaders, and text,
@@ -163,6 +163,7 @@ public class CsGrammar : FGGrammar
 		var argumentList = new Id("argumentList");
 		var attributeArgumentList = new Id("attributeArgumentList");
 		var expression = new Id("expression");
+		var conditionalExpression = new Id("conditionalExpression");
 		var constantExpression = new Id("constantExpression");
 		var primaryExpression = new Id("primaryExpression");
 		var arrayCreationExpression = new Id("arrayCreationExpression");
@@ -218,15 +219,32 @@ public class CsGrammar : FGGrammar
 
 		var usingNamespaceDirective = new Id("usingNamespaceDirective");
 		var usingAliasDirective = new Id("usingAliasDirective");
+		var usingStaticDirective = new Id("usingStaticDirective");
 		var globalNamespace = new Id("globalNamespace");
 		var namespaceName = new Id("namespaceName");
 		var namespaceOrTypeName = new Id("namespaceOrTypeName");
 		var PARTIAL = new Id("PARTIAL");
 		var ASYNC = new Id("ASYNC");
 
-		parser.Add(new Rule("usingDirective",
-			"using" - (new If(IDENTIFIER - "=", usingAliasDirective) | usingNamespaceDirective) - ";"
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("usingDirective",
+				"using" - (
+					new If(IDENTIFIER - "=", usingAliasDirective)
+					| usingNamespaceDirective
+				) - ";"
 			));
+		}
+		else
+		{
+			parser.Add(new Rule("usingDirective",
+				"using" - (
+					new If(IDENTIFIER - "=", usingAliasDirective)
+					| usingNamespaceDirective
+					| usingStaticDirective
+				) - ";"
+			));
+		}
 
 		parser.Add(new Rule("PARTIAL",
 			new If(s => s.Current.text == "partial", IDENTIFIER) | "partial"
@@ -236,18 +254,36 @@ public class CsGrammar : FGGrammar
 			parser.Add(new Rule("ASYNC",
 				IDENTIFIER | "async"
 			) { contextualKeyword = true });
-		
-		parser.Add(new Rule("namespaceMemberDeclaration",
-			namespaceDeclaration
-			| (attributes - modifiers - new Alt(
-				new Seq(
-					new Opt(PARTIAL),
-					new Id("classDeclaration") | new Id("structDeclaration") | new Id("interfaceDeclaration")),
-				new Id("enumDeclaration"),
-				new Id("delegateDeclaration"))
-			)
-			| ".NAMESPACEBODY"
+
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("namespaceMemberDeclaration",
+				namespaceDeclaration
+				| (attributes - modifiers - new Alt(
+					new Seq(
+						new Opt(PARTIAL),
+						new Id("classDeclaration") | new Id("structDeclaration") | new Id("interfaceDeclaration")),
+					new Id("enumDeclaration"),
+					new Id("delegateDeclaration")
+				))
+				| ".NAMESPACEBODY"
 			));
+		}
+		else
+		{
+			parser.Add(new Rule("namespaceMemberDeclaration",
+				namespaceDeclaration
+				| (attributes - modifiers - new Alt(
+					new Seq(
+						new Opt(PARTIAL),
+						new Id("classDeclaration") | new Id("structDeclaration") | new Id("interfaceDeclaration")),
+					new Id("enumDeclaration"),
+					new Id("delegateDeclaration"),
+					"ref" - new Opt(PARTIAL) - new Id("structDeclaration")
+				))
+				| ".NAMESPACEBODY"
+			));
+		}
 
 		parser.Add(new Rule("namespaceDeclaration",
 			"namespace" - qualifiedIdentifier - namespaceBody - new Opt(";")
@@ -285,6 +321,13 @@ public class CsGrammar : FGGrammar
 		parser.Add(new Rule("usingAliasDirective",
 			IDENTIFIER - "=" - namespaceOrTypeName
 			) { semantics = SemanticFlags.UsingAlias });
+
+		if (!CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("usingStaticDirective",
+				"static" - namespaceOrTypeName
+			) { semantics = SemanticFlags.UsingStatic });
+		}
 
 		parser.Add(new Rule("classDeclaration",
 			new Seq(
@@ -347,11 +390,20 @@ public class CsGrammar : FGGrammar
 					| new If("async", ASYNC - modifiers - type - memberName - "(", ASYNC - modifiers - type - methodDeclaration)
 					| new If(PARTIAL, PARTIAL - ("void" - methodDeclaration | classDeclaration | structDeclaration | interfaceDeclaration))
 					| new If(IDENTIFIER - "(", constructorDeclaration)
+					| "ref" - (
+						new If(PARTIAL, PARTIAL - structDeclaration)
+						| structDeclaration
+						| new Opt("readonly") - type - (
+							new If(memberName - "(", methodDeclaration)
+							| new If(memberName - (new Lit("{") | "=>") , propertyDeclaration)
+							| new If(memberName - "this", memberName - indexerDeclaration)
+							//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
+							| indexerDeclaration))
 					| new Seq(
 						type,
 						new If(memberName - "(", methodDeclaration)
 						| new If(memberName - (new Lit("{") | "=>") , propertyDeclaration)
-						| new If(typeName - "." - "this", typeName - "." - indexerDeclaration)
+						| new If(memberName - "this", memberName - indexerDeclaration)
 						//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
 						| indexerDeclaration
 						| fieldDeclaration
@@ -381,7 +433,7 @@ public class CsGrammar : FGGrammar
 						type,
 						new If(memberName - "(", methodDeclaration)
 						| new If(memberName - "{", propertyDeclaration)
-						| new If(typeName - "." - "this", typeName - "." - indexerDeclaration)
+						| new If(memberName - "this", memberName - indexerDeclaration)
 						//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
 						| indexerDeclaration
 						| fieldDeclaration
@@ -551,7 +603,7 @@ public class CsGrammar : FGGrammar
 		{
 			parser.Add(new Rule("methodBody",
 				"{" - statementList - "}"
-				| "=>" - expression - ";"
+				| "=>" - new Opt("ref") - expression - ";"
 				| ";"
 			) { semantics = SemanticFlags.MethodBodyScope });
 		}
@@ -588,6 +640,8 @@ public class CsGrammar : FGGrammar
 		var localVariableDeclarators = new Id("localVariableDeclarators");
 		var localVariableDeclarator = new Id("localVariableDeclarator");
 		var localVariableInitializer = new Id("localVariableInitializer");
+		var caseVariableDeclaration = new Id("caseVariableDeclaration");
+		var caseVariableDeclarator = new Id("caseVariableDeclarator");
 		//var stackallocInitializer = new Id("stackallocInitializer");
 		var localConstantDeclaration = new Id("localConstantDeclaration");
 		//var unmanagedType = new Id("unmanagedType");
@@ -603,13 +657,27 @@ public class CsGrammar : FGGrammar
 			IDENTIFIER | "var"
 			) { contextualKeyword = true });
 
-		parser.Add(new Rule("statement",
-			new If(IsAwaitInsideAsyncMethod, awaitExpression)
-			| new If((type | "var") - IDENTIFIER - (new Lit(";") | "=" | "[" | ","), localVariableDeclaration - ";")
-			| new If(IDENTIFIER - ":", labeledStatement)
-			| localConstantDeclaration
-			| embeddedStatement
-			));
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("statement",
+				new If(IsAwaitInsideAsyncMethod, awaitExpression)
+				| new If((type | "var") - IDENTIFIER - (new Lit(";") | "=" | "[" | ","), localVariableDeclaration - ";")
+				| new If(IDENTIFIER - ":", labeledStatement)
+				| localConstantDeclaration
+				| embeddedStatement
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("statement",
+				new If(IsAwaitInsideAsyncMethod, awaitExpression)
+				| new If((type | "var") - IDENTIFIER - (new Lit(";") | "=" | "[" | ","), localVariableDeclaration - ";")
+				| new If(IDENTIFIER - ":", labeledStatement)
+				| "ref" - new Opt("readonly") - localVariableDeclaration - ";"
+				| localConstantDeclaration
+				| embeddedStatement
+				));
+		}
 
 	//	parser.Add(new Rule("declarationStatement",
 	//		new Seq( localVariableDeclaration | localConstantDeclaration, ";" )
@@ -628,9 +696,29 @@ public class CsGrammar : FGGrammar
 			localVariableDeclarator - new Many("," - localVariableDeclarator)
 			));
 
-		parser.Add(new Rule("localVariableDeclarator",
-			NAME - new Opt("=" - localVariableInitializer)
-			) { semantics = SemanticFlags.LocalVariableDeclarator });
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("localVariableDeclarator",
+				NAME - new Opt("=" - localVariableInitializer)
+				) { semantics = SemanticFlags.LocalVariableDeclarator });
+		}
+		else
+        {
+			parser.Add(new Rule("localVariableDeclarator",
+				NAME - new Opt("=" - new Opt("ref") - localVariableInitializer)
+				) { semantics = SemanticFlags.LocalVariableDeclarator });
+        }
+
+		if (!CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("caseVariableDeclaration",
+				localVariableType - caseVariableDeclarator
+				));
+	
+			parser.Add(new Rule("caseVariableDeclarator",
+				NAME
+				) { semantics = SemanticFlags.CaseVariableDeclaration });
+		}
 
 		parser.Add(new Rule("localVariableInitializer",
 			expression | arrayInitializer //| stackallocInitializer
@@ -709,6 +797,13 @@ public class CsGrammar : FGGrammar
 				| new Lit("break") - ";" )
 			));
 
+		var WHEN = new Id("WHEN");
+		parser.Add(new Rule("WHEN",
+			new If(s => s.Current.text == "when", IDENTIFIER)
+			| "when"
+		) { contextualKeyword = true });
+
+
 		var ifStatement = new Id("ifStatement");
 		var elseStatement = new Id("elseStatement");
 		var switchStatement = new Id("switchStatement");
@@ -738,14 +833,34 @@ public class CsGrammar : FGGrammar
 			"{" - new Many(switchSection) - "}"
 			) { semantics = SemanticFlags.SwitchBlockScope });
 
-		parser.Add(new Rule("switchSection",
-			new Many(switchLabel) - statement - statementList
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("switchSection",
+				switchLabel - new Many(switchLabel) - statement - statementList
 			));
 
-		parser.Add(new Rule("switchLabel",
-			"case" - constantExpression - ":"
-			| new Seq( "default", ":" )
-			));
+			parser.Add(new Rule("switchLabel",
+				"case" - constantExpression - ":"
+				| new Seq( "default", ":" )
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("switchSection",
+				switchLabel - new Many(switchLabel) - statement - statementList
+				) { semantics = SemanticFlags.SwitchSectionScope });
+
+			parser.Add(new Rule("switchLabel",
+				"case" - (
+					(
+						new If(constantExpression - (WHEN | ":"), constantExpression)
+						| caseVariableDeclaration
+					)
+					- new Opt(WHEN - expression) - ":"
+				)
+				| new Seq( "default", ":" )
+				));
+		}
 
 		parser.Add(new Rule("expressionStatement",
 			statementExpression - ";"
@@ -775,9 +890,18 @@ public class CsGrammar : FGGrammar
 			- ";"
 			));
 
-		parser.Add(new Rule("returnStatement",
-			"return" - new Opt(expression) - ";"
-			));
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("returnStatement",
+				"return" - new Opt(expression) - ";"
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("returnStatement",
+				"return" - new Opt(new Opt("ref") - expression) - ";"
+				));
+		}
 
 		parser.Add(new Rule("throwStatement",
 			"throw" - new Opt(expression) - ";"
@@ -794,26 +918,50 @@ public class CsGrammar : FGGrammar
 			"try" - block - (catchClauses - new Opt(finallyClause) | finallyClause)
 			));
 
-		parser.Add(new Rule("catchClauses",
-			new If(new Seq( "catch", "(" ), specificCatchClauses - new Opt(generalCatchClause))
-			| generalCatchClause
-			));
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("catchClauses",
+				new If(new Seq("catch", "("), specificCatchClauses - new Opt(generalCatchClause))
+				| generalCatchClause
+				));
 
-		parser.Add(new Rule("specificCatchClauses",
-			specificCatchClause - new Many(new If(new Seq( "catch", "(" ), specificCatchClause ))
-			));
+			parser.Add(new Rule("specificCatchClauses",
+				specificCatchClause - new Many(new If(new Seq( "catch", "(" ), specificCatchClause ))
+				));
 
-		parser.Add(new Rule("specificCatchClause",
-			new Lit("catch") - "(" - exceptionClassType - new Opt(catchExceptionIdentifier) - ")" - block
-			) { semantics = SemanticFlags.SpecificCatchScope });
+			parser.Add(new Rule("specificCatchClause",
+				new Lit("catch") - "(" - exceptionClassType - new Opt(catchExceptionIdentifier) - ")" - block
+				) { semantics = SemanticFlags.SpecificCatchScope });
+
+			parser.Add(new Rule("generalCatchClause",
+				"catch" - block
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("catchClauses",
+				new If("catch" - (WHEN | "("), specificCatchClauses - new Opt(generalCatchClause))
+				| generalCatchClause
+				));
+	
+			parser.Add(new Rule("specificCatchClauses",
+				specificCatchClause - new Many(new If( "catch" - (WHEN | "("), specificCatchClause ))
+				));
+
+			parser.Add(new Rule("specificCatchClause",
+				new Lit("catch") - (
+					WHEN - "(" - expression - ")" - block
+					| "(" - exceptionClassType - new Opt(catchExceptionIdentifier) - ")" - new Opt(WHEN - "(" - expression - ")") - block
+				)) { semantics = SemanticFlags.SpecificCatchScope });
+
+			parser.Add(new Rule("generalCatchClause",
+				"catch" - new Opt("when") - block
+				));
+		}
 
 		parser.Add(new Rule("catchExceptionIdentifier",
 			NAME
 			) { semantics = SemanticFlags.CatchExceptionParameterDeclaration });
-
-		parser.Add(new Rule("generalCatchClause",
-			"catch" - block
-			));
 
 		parser.Add(new Rule("finallyClause",
 			"finally" - block
@@ -832,9 +980,17 @@ public class CsGrammar : FGGrammar
 			new Opt(parameterModifier) - type - NAME - new Opt(defaultArgument)
 			) { semantics = SemanticFlags.FixedParameterDeclaration });
 
-		parser.Add(new Rule("parameterModifier",
-			new Lit("ref") | "out" | "this"
-			));
+		if (CsParser.isCSharp4)
+			parser.Add(new Rule("parameterModifier",
+				("ref" - new Opt("this")) | "out" | ("this" - new Opt("ref"))
+				));
+		else
+			parser.Add(new Rule("parameterModifier",
+				("ref" - new Opt("this"))
+				| "out"
+				| ("this" - new Opt(new Lit("ref") | "in"))
+				| ("in" - new Opt("this"))
+				));
 
 		parser.Add(new Rule("defaultArgument",
 			"=" - (expression | ".EXPECTEDTYPE")
@@ -870,10 +1026,21 @@ public class CsGrammar : FGGrammar
 				new Opt(forIterator), ")", embeddedStatement)
 			) { semantics = SemanticFlags.ForStatementScope });
 
-		parser.Add(new Rule("forInitializer",
-			new If(localVariableType - IDENTIFIER, localVariableDeclaration)
-			| statementExpressionList
-			));
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("forInitializer",
+				new If(localVariableType - IDENTIFIER, localVariableDeclaration)
+				| statementExpressionList
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("forInitializer",
+				new If(localVariableType - IDENTIFIER, localVariableDeclaration)
+				| "ref" - new Opt("readonly") - localVariableDeclaration
+				| statementExpressionList
+				));
+		}
 
 		parser.Add(new Rule("forIterator",
 			statementExpressionList
@@ -976,7 +1143,7 @@ public class CsGrammar : FGGrammar
 		else
 		{
 			parser.Add(new Rule("readonlyAccessorDeclaration",
-				"=>" - expressionBodiedGetAccessorBody
+				"=>" - new Opt("ref") - expressionBodiedGetAccessorBody
 				) { semantics = SemanticFlags.GetAccessorDeclaration });
 
 			parser.Add(new Rule("expressionBodiedGetAccessorBody",
@@ -985,7 +1152,7 @@ public class CsGrammar : FGGrammar
 
 			parser.Add(new Rule("accessorBody",
 				"{" - statementList - "}"
-				| "=>" - expression - ";"
+				| "=>" - new Opt("ref") - expression - ";"
 				| ";"
 				) { semantics = SemanticFlags.AccessorBodyScope });
 		}
@@ -1121,10 +1288,21 @@ public class CsGrammar : FGGrammar
 			(new Lit("implicit") | "explicit") - "operator" - type - "(" - operatorParameter - ")"
 			) { semantics = SemanticFlags.ConversionOperatorDeclarator | SemanticFlags.MethodDeclarationScope });
 
-		parser.Add(new Rule("operatorBody",
-			"{" - statementList - "}"
-			| ";"
-			) { semantics = SemanticFlags.MethodBodyScope });
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("operatorBody",
+				"{" - statementList - "}"
+				| ";"
+				) { semantics = SemanticFlags.MethodBodyScope });
+		}
+		else
+		{
+			parser.Add(new Rule("operatorBody",
+				"{" - statementList - "}"
+				| "=>" - expression - ";"
+				| ";"
+				) { semantics = SemanticFlags.MethodBodyScope });
+		}
 
 		var typeOrGeneric = new Id("typeOrGeneric");
 		var typeArgumentList = new Id("typeArgumentList");
@@ -1163,11 +1341,20 @@ public class CsGrammar : FGGrammar
 					| new If("async", ASYNC - modifiers - type - memberName - "(", ASYNC - modifiers - type - methodDeclaration)
 					| new If(PARTIAL, PARTIAL - ("void" - methodDeclaration | classDeclaration | structDeclaration | interfaceDeclaration))
 					| new If(IDENTIFIER - "(", constructorDeclaration)
+					| "ref" - (
+						new If(PARTIAL, PARTIAL - structDeclaration)
+						| structDeclaration
+						| new Opt("readonly") - type - (
+							new If(memberName - "(", methodDeclaration)
+							| new If(memberName - (new Lit("{") | "=>") , propertyDeclaration)
+							| new If(memberName - "this", memberName - indexerDeclaration)
+							//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
+							| indexerDeclaration))
 					| new Seq(
 						type,
 						new If(memberName - "(", methodDeclaration)
 						| new If(memberName - (new Lit("{") | "=>") , propertyDeclaration)
-						| new If(memberName - "." - "this", typeName - "." - indexerDeclaration)
+						| new If(memberName - "this", memberName - indexerDeclaration)
 						//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
 						| indexerDeclaration
 						| fieldDeclaration
@@ -1196,7 +1383,7 @@ public class CsGrammar : FGGrammar
 						type,
 						new If(memberName - "(", methodDeclaration)
 						| new If(memberName - "{", propertyDeclaration)
-						| new If(memberName - "." - "this", typeName - "." - indexerDeclaration)
+						| new If(memberName - "this", memberName - indexerDeclaration)
 						//| new If(predefinedType - "." - "this", predefinedType - "." - indexerDeclaration)
 						| indexerDeclaration
 						| fieldDeclaration
@@ -1243,11 +1430,11 @@ public class CsGrammar : FGGrammar
 					"void" - interfaceMethodDeclaration
 					| new If("async", ASYNC - modifiers - "void", ASYNC - modifiers - "void" - interfaceMethodDeclaration)
 					| new If("async", ASYNC - modifiers - type - memberName - "(", ASYNC - modifiers - type - interfaceMethodDeclaration)
-					| interfaceEventDeclaration
-					| new Seq( type,
+					| new Opt("ref" - new Opt("readonly")) - type - (
 						new If(memberName - "(", interfaceMethodDeclaration)
 						| new If(memberName - "{", interfacePropertyDeclaration)
 						| interfaceIndexerDeclaration )
+					| interfaceEventDeclaration
 					| ".INTERFACEBODY" )
 				));
 		}
@@ -1323,11 +1510,21 @@ public class CsGrammar : FGGrammar
 			attributes - NAME - new Opt("=" - constantExpression)
 			) { semantics = SemanticFlags.EnumMemberDeclaration });
 
-		parser.Add(new Rule("delegateDeclaration",
-			"delegate" - ("void" | type) - NAME - new Opt(typeParameterList)
-				- "(" - new Opt(formalParameterList) - ")" - new Opt(typeParameterConstraintsClauses) - ";"
-			) { semantics = SemanticFlags.DelegateDeclaration | SemanticFlags.TypeDeclarationScope });
-
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("delegateDeclaration",
+				"delegate" - ("void" | type) - NAME - new Opt(typeParameterList)
+					- "(" - new Opt(formalParameterList) - ")" - new Opt(typeParameterConstraintsClauses) - ";"
+				) { semantics = SemanticFlags.DelegateDeclaration | SemanticFlags.TypeDeclarationScope });
+		}
+		else
+		{
+			parser.Add(new Rule("delegateDeclaration",
+				"delegate" - ("void" | new Opt("ref" - new Opt("readonly")) - type) - NAME - new Opt(typeParameterList)
+					- "(" - new Opt(formalParameterList) - ")" - new Opt(typeParameterConstraintsClauses) - ";"
+				) { semantics = SemanticFlags.DelegateDeclaration | SemanticFlags.TypeDeclarationScope });
+		}
+		
 		var attributeTargetSpecifier = new Id("attributeTargetSpecifier");
 		var ATTRIBUTETARGET = new Id("ATTRIBUTETARGET");
 		parser.Add(new Rule("ATTRIBUTETARGET",
@@ -1450,9 +1647,18 @@ public class CsGrammar : FGGrammar
 			| nonAssignmentExpression
 			));
 
-		parser.Add(new Rule("assignment",
-			unaryExpression - assignmentOperator - (expression | ".EXPECTEDTYPE")
-			));
+		if (!CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("assignment",
+				unaryExpression - assignmentOperator - new Opt("ref") - (expression | ".EXPECTEDTYPE")
+				));
+		}
+		else
+		{
+			parser.Add(new Rule("assignment",
+				unaryExpression - assignmentOperator - (expression | ".EXPECTEDTYPE")
+				));
+		}
 
 		var preIncrementExpression = new Id("preIncrementExpression");
 		var preDecrementExpression = new Id("preDecrementExpression");
@@ -1669,11 +1875,18 @@ public class CsGrammar : FGGrammar
 			IDENTIFIER - "="
 			));
 
-		parser.Add(new Rule("argumentValue",
-			expression
-			| new Seq( new Lit("out") | "ref", variableReference )
-			| ".EXPECTEDTYPE"
-			));
+		if (CsParser.isCSharp4)
+			parser.Add(new Rule("argumentValue",
+				expression
+				| new Seq( new Lit("out") | "ref", variableReference )
+				| ".EXPECTEDTYPE"
+				));
+		else
+			parser.Add(new Rule("argumentValue",
+				expression
+				| new Seq( new Lit("out") | "ref" | "in", variableReference )
+				| ".EXPECTEDTYPE"
+				));
 
 		parser.Add(new Rule("variableReference",
 			expression
@@ -1807,7 +2020,6 @@ public class CsGrammar : FGGrammar
 		var anonymousFunctionSignature = new Id("anonymousFunctionSignature");
 		var lambdaExpression = new Id("lambdaExpression");
 		var queryExpression = new Id("queryExpression");
-		var conditionalExpression = new Id("conditionalExpression");
 		var lambdaExpressionBody = new Id("lambdaExpressionBody");
 		var anonymousMethodBody = new Id("anonymousMethodBody");
 		var implicitAnonymousFunctionParameterList = new Id("implicitAnonymousFunctionParameterList");
@@ -1856,11 +2068,21 @@ public class CsGrammar : FGGrammar
 			IDENTIFIER
 			) { semantics = SemanticFlags.ImplicitParameterDeclaration });
 
-		parser.Add(new Rule("lambdaExpressionBody",
-			expression
-			| "{" - statementList - "}"
-			) { semantics = SemanticFlags.LambdaExpressionBodyScope });
-
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("lambdaExpressionBody",
+				expression
+				| "{" - statementList - "}"
+				) { semantics = SemanticFlags.LambdaExpressionBodyScope });
+		}
+		else
+		{
+			parser.Add(new Rule("lambdaExpressionBody",
+				new Opt("ref") - expression
+				| "{" - statementList - "}"
+				) { semantics = SemanticFlags.LambdaExpressionBodyScope });
+		}
+	
 		parser.Add(new Rule("anonymousMethodExpression",
 			"delegate" - new Opt(explicitAnonymousFunctionSignature) - anonymousMethodBody
 			) { semantics = SemanticFlags.AnonymousMethodDeclaration | SemanticFlags.AnonymousMethodScope });
@@ -1881,9 +2103,14 @@ public class CsGrammar : FGGrammar
 			new Opt(anonymousFunctionParameterModifier) - type - NAME
 			) { semantics = SemanticFlags.ExplicitParameterDeclaration });
 
-		parser.Add(new Rule("anonymousFunctionParameterModifier",
-			new Lit("ref") | "out"
-			));
+		if (CsParser.isCSharp4)
+			parser.Add(new Rule("anonymousFunctionParameterModifier",
+				new Lit("ref") | "out"
+				));
+		else
+			parser.Add(new Rule("anonymousFunctionParameterModifier",
+				new Lit("ref") | "out" | "in"
+				));
 
 		var queryBody = new Id("queryBody");
 		var queryBodyClause = new Id("queryBodyClause");
@@ -1976,9 +2203,20 @@ public class CsGrammar : FGGrammar
 		var additiveExpression = new Id("additiveExpression");
 		var multiplicativeExpression = new Id("multiplicativeExpression");
 
-		parser.Add(new Rule("conditionalExpression",
-			nullCoalescingExpression - new Opt("?" - expression - ":" - expression)
-			) { autoExclude = true });
+		if (CsParser.isCSharp4)
+		{
+			parser.Add(new Rule("conditionalExpression",
+				nullCoalescingExpression - new Opt("?" - expression - ":" - expression)
+				) { autoExclude = true });
+		}
+		else
+		{
+			parser.Add(new Rule("conditionalExpression",
+				nullCoalescingExpression - new Opt("?" - (
+					("ref" - expression - ":" - "ref" - expression)
+					| (expression - ":" - expression)
+				))) { autoExclude = true });
+		}
 
 		parser.Add(new Rule("nullCoalescingExpression",
 			conditionalOrExpression - new Many("??" - conditionalOrExpression)
@@ -2076,6 +2314,11 @@ public class CsGrammar : FGGrammar
 		var numErrors = scanner.ErrorMessage != null ? 1 : 0;
 		while (scanner.CurrentLine() - 1 <= line)
 		{
+			var scannerLine = scanner.CurrentLine();
+			var tokenIndex = scanner.CurrentTokenIndex();
+			var rule = scanner.CurrentGrammarNode;
+			var node = scanner.CurrentParseTreeNode;
+			
 		/*	if (scanner.CurrentGrammarNode == EOF)
 			{
 			//	Debug.LogError("EOF expected at line " + (line + 1));
@@ -2090,6 +2333,12 @@ public class CsGrammar : FGGrammar
 			}
 			else
 			{
+                if (scanner.CurrentParseTreeNode == node && scanner.CurrentGrammarNode == rule && scanner.CurrentTokenIndex() == tokenIndex && scanner.CurrentLine() == scannerLine)
+                {
+					parser.tryToRecover = false;
+					//Debug.LogError("Cannot continue parsing - stuck at line " + scannerLine + ", token index " + tokenIndex);
+                    //return false;
+                }
 				numErrors = 0;
 			}
 		}
@@ -2157,6 +2406,7 @@ public class CsGrammar : FGGrammar
 					break;
 
 				case "usingAliasDirective":
+				case "usingStaticDirective":
 					break;
 
 				case "statement":
@@ -2345,6 +2595,9 @@ public class CsGrammar : FGGrammar
 				case SemanticFlags.UsingStatementScope:
 					node.scope = new LocalScope(node) { parentScope = enclosingScope };
 					break;
+				case SemanticFlags.SwitchSectionScope:
+					node.scope = new SwitchSectionScope(node) { parentScope = enclosingScope };
+					break;
 				case SemanticFlags.EmbeddedStatementScope:
 					break;
 				case SemanticFlags.LocalVariableInitializerScope:
@@ -2419,6 +2672,10 @@ public class CsGrammar : FGGrammar
 					//(enclosingScope as NamespaceScope).declaration.importedNamespaces[namespaceToImport] = new SymbolReference(node.ChildAt(0));
 					//return null;
 
+				case SemanticFlags.UsingStatic:
+					node.declaration = new SymbolDeclaration { parseTreeNode = node, kind = SymbolKind.ImportedStaticType };
+					break;
+					
 				case SemanticFlags.UsingAlias:
 					node.declaration = new SymbolDeclaration { parseTreeNode = node, kind = SymbolKind.TypeAlias };
 					break;
@@ -2489,6 +2746,9 @@ public class CsGrammar : FGGrammar
 					break;
 				case SemanticFlags.LocalVariableDeclarator:
 					node.declaration = new SymbolDeclaration { parseTreeNode = node, kind = SymbolKind.Variable };
+					break;
+				case SemanticFlags.CaseVariableDeclaration:
+					node.declaration = new SymbolDeclaration { parseTreeNode = node, kind = SymbolKind.CaseVariable };
 					break;
 				case SemanticFlags.ForEachVariableDeclaration:
 					node.declaration = new SymbolDeclaration { parseTreeNode = node, kind = SymbolKind.ForEachVariable };
@@ -2746,6 +3006,9 @@ public class CsGrammar : FGGrammar
 					break;
 				case "async":
 					mods |= Modifiers.Async;
+					break;
+				case "in":
+					mods |= Modifiers.In;
 					break;
 				default:
 					return mods; // Cancelling...

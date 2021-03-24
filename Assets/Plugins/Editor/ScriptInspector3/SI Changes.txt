@@ -1,6 +1,6 @@
 -------------------------------------
 SCRIPT INSPECTOR 3
-version 3.0.27, December 2020
+version 3.0.28, March 2021
 Copyright © 2012-2020, Flipbook Games
 -------------------------------------
 
@@ -23,6 +23,29 @@ Thank you @inventor2010 for being awesome!!! :)
 
 Script Inspector 3 - Version History
 =====================================
+
+New in version 3.0.28:
+- C# 5.0-7.3 support:
+  * using static directive
+  * "in" parameters
+  * expression-bodied operators
+  * "when" in catch statements
+  * pattern matching in switch statements
+  * ref returns
+  * local ref variables
+  * ref assignments
+  * conditional ref expressions
+  * ref structs
+- Fixed flickering autocomplete list - thanks @Ksanone & @magnox7
+- Fixed compile errors in Unity 2019.1 - thanks @BradZoob
+- Fixed parsing explicit implementation of indexers in generic interfaces - thanks @qiwulun
+- Fixed "word stops" on non-ascii letters - thanks @zeiksz
+- Fixed auto-indent when it's disabled - thanks @ahp275
+- Fixed tokenizing preprocessor directive argument - thanks @Sarinen
+- Fixed invalid argument exception on right-click - thanks @Sarinen
+- Fixed an index out of bounds exception
+- Fixed unnecessary delay when typing the first character
+- Fixed Monospaced Font button in SI Console
 
 New in version 3.0.27:
 - C# 5.0 to C# 7.3 support:
