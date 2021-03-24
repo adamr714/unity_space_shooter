@@ -36,6 +36,13 @@ public class Player : MonoBehaviour
 	private int _score;
 	private UIManager _uiManager;
 	
+	//damage
+	[SerializeField]
+	private GameObject _leftEnginePrefab;
+	
+	[SerializeField]
+	private GameObject _rightEnginePrefab;
+	
 	
     void Start()
     {
@@ -152,8 +159,7 @@ public class Player : MonoBehaviour
 
 	public void Damage()
 	{
-		
-
+	
 		if(_shieldActive == true)
 		{
 			_shieldActive = false;
@@ -170,6 +176,15 @@ public class Player : MonoBehaviour
 		{
 			_spawnManager.OnPlayerDeath();
 			Destroy(this.gameObject);
+		}
+		
+		if(_lives == 2)
+		{
+			_rightEnginePrefab.SetActive(true);
+		}
+		else if(_lives == 1)
+		{
+			_leftEnginePrefab.SetActive(true);
 		}
 	}
 }
