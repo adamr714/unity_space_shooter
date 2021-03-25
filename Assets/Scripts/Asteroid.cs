@@ -25,9 +25,6 @@ public class Asteroid : MonoBehaviour
 	    transform.Rotate(Vector3.forward *_rotateSpeed * Time.deltaTime);
     }
     
-	//check for laser collisison of type trigger
-	//instantiate explosion at my position.
-	//destroy after 3 seconds
 	
 	private void OnTriggerEnter2D(Collider2D other)
 	{

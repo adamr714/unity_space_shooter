@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor.UI;
 
 public class Player : MonoBehaviour
 {
@@ -42,6 +41,14 @@ public class Player : MonoBehaviour
 	
 	[SerializeField]
 	private GameObject _rightEnginePrefab;
+
+	
+	//audio
+	[SerializeField]
+	private AudioClip _laserSoundClip;
+	
+	[SerializeField]
+	private AudioSource _audioSource;
 	
 	
     void Start()
@@ -49,16 +56,18 @@ public class Player : MonoBehaviour
 	    transform.position = new Vector3(0,-3.0f, 0);
 	    _spawnManager = GameObject.Find("Spawn_Manager").GetComponent<Spawn_Manager>();
 	    _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
+	    _audioSource = GetComponent<AudioSource>();
+	    _audioSource.clip = _laserSoundClip;
 	    
-	    if(_spawnManager != null)
-	    {
-	    	Debug.LogError("SpawnManger is Null");
-	    }
+	    //if(_spawnManager != null)
+	    //{
+	    //	Debug.LogError("SpawnManger is Null");
+	    //}
 	    
-	    if(_uiManager == null)
-	    {
-	    	Debug.LogError("UI Manager is Empty");
-	    }
+	    //if(_uiManager == null)
+	    //{
+	    //	Debug.LogError("UI Manager is Empty");
+	    //}
 
 	    
     }
@@ -115,6 +124,8 @@ public class Player : MonoBehaviour
 		{
 			Instantiate(_laserPrefab, transform.position + new Vector3(0, 1.05f, 0), Quaternion.identity);
 		}
+		
+		_audioSource.Play();
 	}
 
 	public void TripleShotActive()
