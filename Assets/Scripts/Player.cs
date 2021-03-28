@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+	[SerializeField]
 	private float _speed = 3.5f;
 	private float _speedMultiplier = 4.0f;
 
@@ -25,6 +26,7 @@ public class Player : MonoBehaviour
 	private bool _speedBoostEnabled = false;
 	private bool _shieldActive = false;
 	
+
 	[SerializeField]
 	private GameObject _shieldPrefab;
 	
@@ -59,15 +61,15 @@ public class Player : MonoBehaviour
 	    _audioSource = GetComponent<AudioSource>();
 	    _audioSource.clip = _laserSoundClip;
 	    
-	    //if(_spawnManager != null)
-	    //{
-	    //	Debug.LogError("SpawnManger is Null");
-	    //}
+	    if(_spawnManager != null)
+	    {
+	    	Debug.LogError("SpawnManger is Null");
+	    }
 	    
-	    //if(_uiManager == null)
-	    //{
-	    //	Debug.LogError("UI Manager is Empty");
-	    //}
+	    if(_uiManager == null)
+	    {
+	    	Debug.LogError("UI Manager is Empty");
+	    }
 
 	    
     }
@@ -79,6 +81,18 @@ public class Player : MonoBehaviour
 		if(Input.GetKeyDown(KeyCode.Space) && Time.time > _canFire)
 		{
 			FireLaser();
+		}
+		
+		if(Input.GetKey(KeyCode.LeftShift))
+		{
+			
+			Debug.Log("Left Shift is Down");
+			_speed = 10;
+		}
+		else 
+		{
+	
+			_speed = 3.5f;
 		}
 		
 	}
@@ -97,7 +111,6 @@ public class Player : MonoBehaviour
 		else if(_speedBoostEnabled == true)
 		{
 			transform.Translate(direction * (_speed * _speedMultiplier) * Time.deltaTime);			
-
 		}
 
 		transform.position = new Vector3(transform.position.x, Mathf.Clamp(transform.position.y, -3.5f, 0), 0);
@@ -197,5 +210,10 @@ public class Player : MonoBehaviour
 		{
 			_leftEnginePrefab.SetActive(true);
 		}
+	}
+	
+	public void Booster()
+	{
+		_speed = 12;
 	}
 }
