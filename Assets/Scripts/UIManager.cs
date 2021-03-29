@@ -21,6 +21,9 @@ public class UIManager : MonoBehaviour
 	[SerializeField]
 	private Text _restartGame;
 	
+	[SerializeField]
+	private Text _ammoText;
+	
 	private GameManager _gameManager;
 	
     // Start is called before the first frame update
@@ -30,7 +33,7 @@ public class UIManager : MonoBehaviour
 		_gameOver.gameObject.SetActive(false);
 		_restartGame.gameObject.SetActive(false);
 		_gameManager = GameObject.Find("Game_Manager").GetComponent<GameManager>();
-	    
+		_ammoText.text = "Ammo: " + 15;
     }
 
 	public void UpdateScore(int playerScore)
@@ -38,9 +41,15 @@ public class UIManager : MonoBehaviour
 		_scoreText.text = "Score: " + playerScore.ToString();
 	}
 	
+	public void UpdateAmmo(int ammoNumber)
+	{
+		_ammoText.text = "Ammo: " + ammoNumber.ToString();
+	}
+
+
+	
 	public void UpdateLives(int currentLives)
 	{
-		
 		_LivesImg.sprite = _liveSprites[currentLives];
 		
 		if(currentLives == 0)
@@ -48,7 +57,6 @@ public class UIManager : MonoBehaviour
 			GameOverSequence();
 		}
 	}
-	
 	
 	void GameOverSequence()
 	{

@@ -51,6 +51,11 @@ public class Player : MonoBehaviour
 	private AudioSource _audioSource;
 	
 	
+	//ammo
+	[SerializeField]
+	private int _ammo = 15;
+	
+	
     void Start()
     {
 	    transform.position = new Vector3(0,-3.0f, 0);
@@ -116,13 +121,20 @@ public class Player : MonoBehaviour
 	{
 		_canFire = Time.time + _fireRate;
 		
-		if(_tripleShotEnabled == true)
+		if(_ammo > 0)
 		{
-			Instantiate(_tripleShotPrefab, transform.position, Quaternion.identity);
-		}
-		else 
-		{
-			Instantiate(_laserPrefab, transform.position + new Vector3(0, 1.05f, 0), Quaternion.identity);
+			if(_tripleShotEnabled == true && _ammo > 3)
+			{
+				Instantiate(_tripleShotPrefab, transform.position, Quaternion.identity);
+				_ammo = _ammo - 3;
+				AmmoNumber();
+			}
+			else 
+			{
+				Instantiate(_laserPrefab, transform.position + new Vector3(0, 1.05f, 0), Quaternion.identity);
+				_ammo = _ammo - 1;
+				AmmoNumber();
+			}
 		}
 		
 		_audioSource.Play();
@@ -159,13 +171,17 @@ public class Player : MonoBehaviour
 		_shieldPrefab.SetActive(true);
 	}
 	
+	public void AmmoNumber()
+	{
+		_ammo = 15;
+	}
+	
 	
 	public void AddScore(int points)
 	{
 		_score += points;
 		_uiManager.UpdateScore(_score);
 	}
-
 	
 
 	public void Damage()
