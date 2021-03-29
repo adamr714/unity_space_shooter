@@ -127,13 +127,13 @@ public class Player : MonoBehaviour
 			{
 				Instantiate(_tripleShotPrefab, transform.position, Quaternion.identity);
 				_ammo = _ammo - 3;
-				AmmoNumber();
+				AmmoNumber(_ammo);
 			}
 			else 
 			{
 				Instantiate(_laserPrefab, transform.position + new Vector3(0, 1.05f, 0), Quaternion.identity);
 				_ammo = _ammo - 1;
-				AmmoNumber();
+				AmmoNumber(_ammo);
 			}
 		}
 		
@@ -171,11 +171,16 @@ public class Player : MonoBehaviour
 		_shieldPrefab.SetActive(true);
 	}
 	
-	public void AmmoNumber()
+	public void AmmoNumber(int ammo)
 	{
-		_ammo = 15;
+		_uiManager.UpdateAmmo(ammo);
 	}
 	
+	public void AmmoReload()
+	{
+		_ammo = 15;
+		_uiManager.UpdateAmmo(_ammo);
+	}
 	
 	public void AddScore(int points)
 	{

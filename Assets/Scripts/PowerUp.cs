@@ -55,7 +55,7 @@ public class PowerUp : MonoBehaviour
 					player.ShieldActive();
 					break;
 				case 3:
-					player.AmmoNumber();
+					player.AmmoReload();
 					break;
 				default:
 					Debug.Log("Blah blah blah!!!");
